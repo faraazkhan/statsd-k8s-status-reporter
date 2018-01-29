@@ -2,6 +2,14 @@
 
 Simple utility pod that reports a summarized kubernetes component status to a statsd collector.
 
+What does it do?
+
+Basically it calls the equivalent of `kubectl get componentstatuses` on a loop every `STATSD_COMPONENTCHECK_POLL_INTERVAL_SECONDS` (default 30) seconds.
+
+If all components report healthy, it reports the ServiceCheck as `ok`. If any component is unhealthy, it reports the ServiceCheck as `critical`.
+
+You can then set dashboards/alerts on this Service Check to monitor the health of your kubernetes cluster.
+
 # Why?
 
 Kube State Metrics does not support component statuses because lack of a watcher API
