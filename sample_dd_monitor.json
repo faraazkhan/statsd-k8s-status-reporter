@@ -1,0 +1,21 @@
+{
+	"name": "Kubernetes Cluster is unhealthy",
+	"type": "service check",
+	"query": "\"kubernetes.custom.clusterstatus\".over(\"*\").last(3).count_by_status()",
+	"message": "{{#is_alert}}\n A kubernetes component is down for {{host.name}} {{check_message}} \n{{/is_alert}} \n\n @myusername",
+	"tags": [],
+	"options": {
+		"notify_audit": true,
+		"locked": false,
+		"timeout_h": 24,
+		"silenced": {},
+		"thresholds": {
+			"critical": 2,
+			"ok": 2
+		},
+		"new_host_delay": 300,
+		"notify_no_data": true,
+		"renotify_interval": 0,
+		"no_data_timeframe": 2
+	}
+}
