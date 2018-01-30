@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/DataDog/datadog-go/statsd"
-	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
 )
@@ -92,10 +91,8 @@ func Report(clientset *kubernetes.Clientset) {
 			reportToStatsd(statsd.Critical, message) // Assume we are having trouble hitting the API, Currently this will misreport for RBAC issues
 
 		} else {
-			log.Printf("Checking %v components", len(components.Items))
 			for idx, component := range components.Items {
-				if component.Conditions[0].Type != v1.ComponentHealthy {
-					log.Printf("Component %v,  %v is healthy", idx, component.Name)
+				if component.Conditions[0].Status != "True" {
 					clusterHealth = statsd.Critical
 					message = fmt.Sprintf("%v is unhealthy: %v", component.Name, component.Conditions[0].Message)
 					log.Printf(message)

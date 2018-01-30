@@ -1,20 +1,21 @@
 {
-	"name": "Kubernetes Cluster is unhealthy",
+	"name": "**Test** Kubernetes Cluster is Unhealthy",
 	"type": "service check",
-	"query": "\"kubernetes.custom.clusterstatus\".over(\"*\").last(3).count_by_status()",
-	"message": "{{#is_alert}}\n A kubernetes component is down for {{host.name}} {{check_message}} \n{{/is_alert}} \n\n @myusername",
+	"query": "\"kubernetes.custom.clusterstatus\".over(\"host:kubernetes.faraaz.prod\").exclude(\"host:mycluster.rationalizeit.us\").last(5).count_by_status()",
+	"message": "Kubernetes cluster is failing component status check on {{host.name}} with {{check_message}}  @mydatadoguser",
 	"tags": [],
 	"options": {
-		"notify_audit": true,
-		"locked": false,
-		"timeout_h": 24,
+		"notify_audit": false,
+		"locked": true,
+		"timeout_h": 0,
 		"silenced": {},
 		"thresholds": {
-			"critical": 2,
+			"warning": 2,
+			"critical": 4,
 			"ok": 2
 		},
 		"new_host_delay": 300,
-		"notify_no_data": true,
+		"notify_no_data": false,
 		"renotify_interval": 0,
 		"no_data_timeframe": 2
 	}
