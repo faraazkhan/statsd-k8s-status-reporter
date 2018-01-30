@@ -6,7 +6,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: statsd-k8s-status-reporter
-  namespace: default
+  namespace: ${REPORTER_NAMESPACE}
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -25,7 +25,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: statsd-k8s-status-reporter
-    namespace: default
+    namespace: ${REPORTER_NAMESPACE}
 roleRef:
   kind: ClusterRole
   name: statsd-k8s-status-reporter

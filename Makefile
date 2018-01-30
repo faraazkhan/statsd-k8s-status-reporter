@@ -1,7 +1,8 @@
 REPORTER_IMAGE := faraazkhan/statsd-k8s-status-reporter
 REPORTER_TAG := $(shell git rev-parse --short HEAD)
+REPORTER_NAMESPACE := default
 
-export REPORTER_IMAGE REPORTER_TAG
+export REPORTER_IMAGE REPORTER_TAG REPORTER_NAMESPACE
 
 all: build deploy
 
