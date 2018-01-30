@@ -92,8 +92,10 @@ func Report(clientset *kubernetes.Clientset) {
 			reportToStatsd(statsd.Critical, message) // Assume we are having trouble hitting the API, Currently this will misreport for RBAC issues
 
 		} else {
+			log.Printf("Checking %v components", len(components.Items))
 			for idx, component := range components.Items {
 				if component.Conditions[0].Type != v1.ComponentHealthy {
+					log.Printf("Component %v,  %v is healthy", idx, component.Name)
 					clusterHealth = statsd.Critical
 					message = fmt.Sprintf("%v is unhealthy: %v", component.Name, component.Conditions[0].Message)
 					log.Printf(message)
