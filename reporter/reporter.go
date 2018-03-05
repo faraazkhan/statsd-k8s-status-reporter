@@ -70,10 +70,9 @@ func envOrDefault(key, fallback string) string {
 	return fallback
 }
 
-// Report metrics to a Statsd Collector
-func Report(clientset *kubernetes.Clientset) {
+// Monitor important components of the Kubernetes Cluster
+func Monitor(clientset *kubernetes.Clientset) {
 
-	clusterHealth := statsd.Ok
 	message := envOrDefault("STATSD_COMPONENTCHECK_SUCCESS_MESSAGE", "All components are healthy!")
 	pollInterval, err := strconv.Atoi(envOrDefault("STATSD_COMPONENTCHECK_POLL_INTERVAL_SECONDS", "10"))
 
@@ -84,12 +83,12 @@ func Report(clientset *kubernetes.Clientset) {
 	}
 
 	for {
+		clusterHealth := statsd.Ok
 		components, err := clientset.CoreV1().ComponentStatuses().List(metav1.ListOptions{})
 		if err != nil {
 			message = fmt.Sprintf("Error listing components: %v\n", err)
 			log.Printf(message)
 			reportToStatsd(statsd.Critical, message) // Assume we are having trouble hitting the API, Currently this will misreport for RBAC issues
-
 		} else {
 			for idx, component := range components.Items {
 				if component.Conditions[0].Status != "True" {

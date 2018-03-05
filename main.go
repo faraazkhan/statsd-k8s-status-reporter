@@ -19,5 +19,5 @@ func main() {
 		panic(err.Error()) // Only works inside a K8S Cluster
 	}
 
-	reporter.Report(clientset)
+	reporter.Monitor(clientset)
 }
