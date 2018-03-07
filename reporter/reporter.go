@@ -4,6 +4,7 @@ package reporter
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"strconv"
 	"strings"
@@ -18,6 +19,18 @@ func getAdditionalTags() []string {
 	tags := envOrDefault("STATSD_AGENT_TAGS", "") // Comma separated list of tags for DD Agent
 	tagsList := strings.Split(",", tags)
 	return tagsList
+}
+
+func isKubeDNSUnhealthy() (status bool, err error) {
+	_, err = net.LookupHost("kubernetes.svc.default.cluster.local")
+	if err != nil {
+		return false, err
+	}
+	_, err = net.LookupHost("google.com")
+	if err != nil {
+		return false, err
+	}
+	return true, nil
 }
 
 func reportToStatsd(status statsd.ServiceCheckStatus, message string) {
@@ -73,28 +86,33 @@ func envOrDefault(key, fallback string) string {
 // Monitor important components of the Kubernetes Cluster
 func Monitor(clientset *kubernetes.Clientset) {
 
-	message := envOrDefault("STATSD_COMPONENTCHECK_SUCCESS_MESSAGE", "All components are healthy!")
 	pollInterval, err := strconv.Atoi(envOrDefault("STATSD_COMPONENTCHECK_POLL_INTERVAL_SECONDS", "10"))
 
 	if err != nil {
 		log.Printf("Could not determine pollInterval: %v\n", err)
-		log.Printf("Falling back to default pollInterval of 10 seconds")
+		log.Print("Falling back to default pollInterval of 10 seconds")
 		pollInterval = 10
 	}
 
 	for {
 		clusterHealth := statsd.Ok
+		message := envOrDefault("STATSD_COMPONENTCHECK_SUCCESS_MESSAGE", "All components are healthy!")
+		_, err := isKubeDNSUnhealthy()
+		if err != nil {
+			message = fmt.Sprintf("There was an error with KubeDNS: %v\n", err)
+			reportToStatsd(statsd.Critical, message)
+		}
 		components, err := clientset.CoreV1().ComponentStatuses().List(metav1.ListOptions{})
 		if err != nil {
 			message = fmt.Sprintf("Error listing components: %v\n", err)
-			log.Printf(message)
+			log.Print(message)
 			reportToStatsd(statsd.Critical, message) // Assume we are having trouble hitting the API, Currently this will misreport for RBAC issues
 		} else {
 			for idx, component := range components.Items {
 				if component.Conditions[0].Status != "True" {
 					clusterHealth = statsd.Critical
 					message = fmt.Sprintf("%v is unhealthy: %v", component.Name, component.Conditions[0].Message)
-					log.Printf(message)
+					log.Print(message)
 					reportToStatsd(clusterHealth, message)
 					break // Break on the first unhealthy component
 				}
