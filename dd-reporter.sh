@@ -56,5 +56,7 @@ spec:
             value: mycluster.rationalizeit.us # change me
           - name: STATSD_SERVICE_HOST
             value: dd-statsd-service # change me
+          - name: STATSD_DNS_LOOKUP_HOSTS
+            value: "google.com,kubernetes.svc.default.cluster.local" #usually one internal and one external host, comma separated
       serviceAccountName: statsd-k8s-status-reporter
 EOF

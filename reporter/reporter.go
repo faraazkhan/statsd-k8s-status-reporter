@@ -22,13 +22,14 @@ func getAdditionalTags() []string {
 }
 
 func isKubeDNSUnhealthy() (status bool, err error) {
-	_, err = net.LookupHost("kubernetes.svc.default.cluster.local")
-	if err != nil {
-		return false, err
-	}
-	_, err = net.LookupHost("google.com")
-	if err != nil {
-		return false, err
+	hostsString := envOrDefault("STATSD_DNS_LOOKUP_HOSTS", "google.com,kubernetes.svc.default.cluster.local")
+	hosts := strings.Split(hostsString, ",")
+
+	for _, host := range hosts {
+		_, err = net.LookupHost(host)
+		if err != nil {
+			return false, err
+		}
 	}
 	return true, nil
 }
@@ -72,7 +73,7 @@ func reportToStatsd(status statsd.ServiceCheckStatus, message string) {
 	if err != nil {
 		log.Printf("There was an error reporting to statsd at %v : %v\n", statsdURL, err)
 	} else {
-		log.Printf("Reported status for cluster %v to %v : %v", hostName, statsdURL, statusName)
+		log.Printf("Reported status for cluster %v to %v : %v, %v", hostName, statsdURL, statusName, message)
 	}
 }
 
@@ -86,7 +87,7 @@ func envOrDefault(key, fallback string) string {
 // Monitor important components of the Kubernetes Cluster
 func Monitor(clientset *kubernetes.Clientset) {
 
-	pollInterval, err := strconv.Atoi(envOrDefault("STATSD_COMPONENTCHECK_POLL_INTERVAL_SECONDS", "10"))
+	pollInterval, err := strconv.Atoi(envOrDefault("STATSD_COMPONENTCHECK_POLL_INTERVAL_SECONDS", "30"))
 
 	if err != nil {
 		log.Printf("Could not determine pollInterval: %v\n", err)
@@ -100,27 +101,25 @@ func Monitor(clientset *kubernetes.Clientset) {
 		_, err := isKubeDNSUnhealthy()
 		if err != nil {
 			message = fmt.Sprintf("There was an error with KubeDNS: %v\n", err)
-			reportToStatsd(statsd.Critical, message)
-		}
-		components, err := clientset.CoreV1().ComponentStatuses().List(metav1.ListOptions{})
-		if err != nil {
-			message = fmt.Sprintf("Error listing components: %v\n", err)
-			log.Print(message)
-			reportToStatsd(statsd.Critical, message) // Assume we are having trouble hitting the API, Currently this will misreport for RBAC issues
+			clusterHealth = statsd.Critical
 		} else {
-			for idx, component := range components.Items {
-				if component.Conditions[0].Status != "True" {
-					clusterHealth = statsd.Critical
-					message = fmt.Sprintf("%v is unhealthy: %v", component.Name, component.Conditions[0].Message)
-					log.Print(message)
-					reportToStatsd(clusterHealth, message)
-					break // Break on the first unhealthy component
-				}
-				if idx+1 == len(components.Items) {
-					reportToStatsd(clusterHealth, message) // We did not find an unhealthy component from the entire components.Item list
+			components, err := clientset.CoreV1().ComponentStatuses().List(metav1.ListOptions{})
+			if err != nil {
+				message = fmt.Sprintf("Error listing components: %v\n", err)
+				clusterHealth = statsd.Critical
+				log.Print(message)
+			} else {
+				for _, component := range components.Items {
+					if component.Conditions[0].Status != "True" {
+						clusterHealth = statsd.Critical
+						message = fmt.Sprintf("%v is unhealthy: %v", component.Name, component.Conditions[0].Message)
+						log.Print(mesearage)
+						break // Break on the first unhealthy component
+					}
 				}
 			}
 		}
+		reportToStatsd(clusterHealth, message)
 		time.Sleep(time.Duration(pollInterval) * time.Second)
 	}
 
